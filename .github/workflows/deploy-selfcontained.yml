@@ -1,0 +1,52 @@
+name: Deploy Self-Contained to Production
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+        
+    - name: Restore dependencies
+      run: dotnet restore
+      
+    - name: Build
+      run: dotnet build --configuration Release --no-restore
+      
+    - name: Publish Self-Contained (Windows x64)
+      run: dotnet publish --configuration Release --self-contained true --runtime win-x64 --output ./publish-win-x64 -p:PublishSingleFile=true
+      
+    - name: Publish Self-Contained (Linux x64)
+      run: dotnet publish --configuration Release --self-contained true --runtime linux-x64 --output ./publish-linux-x64 -p:PublishSingleFile=true
+      
+    - name: Upload Windows Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: home-realstate-win-x64
+        path: ./publish-win-x64/
+        
+    - name: Upload Linux Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: home-realstate-linux-x64
+        path: ./publish-linux-x64/
+      
+    # Uncomment and configure for actual deployment
+    # - name: Deploy to IIS (Windows)
+    #   uses: ChristopheLav/iis-deploy@v1
+    #   with:
+    #     website-name: 'YourWebsiteName'
+    #     msdeploy-service-url: ${{ secrets.IIS_SERVER_URL }}
+    #     msdeploy-username: ${{ secrets.IIS_USERNAME }}
+    #     msdeploy-password: ${{ secrets.IIS_PASSWORD }}
+    #     source-path: './publish-win-x64'

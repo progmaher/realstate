@@ -102,9 +102,7 @@ app.UseAuthentication(); // Don't forget this
 app.UseAuthorization();
 app.UseFastEndpoints().UseSwaggerGen();
 app.UseCors("AllowAll");
-app.MapStaticAssets();
-app.MapRazorPages()
-   .WithStaticAssets();
+app.MapRazorPages();
 app.UseStaticFiles();
 
 // Create tables if they don't exist

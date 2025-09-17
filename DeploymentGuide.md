@@ -1,6 +1,35 @@
 # دليل النشر المباشر على السيرفر باستخدام CI/CD أو Web Deploy
 
-## الطريقة الأولى: النشر باستخدام Web Deploy من Visual Studio
+## الطريقة الأولى: النشر المستقل (Self-Contained) مع معمارية x64
+
+### 1. النشر المستقل باستخدام Command Line:
+```bash
+# نشر مستقل مع معمارية x64
+dotnet publish --configuration Release --self-contained true --runtime win-x64 --output ./publish
+
+# نشر مستقل مع ملف تنفيذي واحد
+dotnet publish --configuration Release --self-contained true --runtime win-x64 --output ./publish -p:PublishSingleFile=true
+
+# نشر مستقل محسّن (مع تقليل الحجم)
+dotnet publish --configuration Release --self-contained true --runtime win-x64 --output ./publish -p:PublishSingleFile=true -p:PublishTrimmed=true
+```
+
+### 2. مميزات النشر المستقل:
+- لا يتطلب تثبيت .NET Runtime على السيرفر المستهدف
+- يتضمن جميع المكتبات والتبعيات المطلوبة
+- يدعم معمارية x64 بشكل مُحسّن
+- إمكانية إنشاء ملف تنفيذي واحد (Single File)
+
+### 3. تشغيل التطبيق:
+```bash
+# تشغيل مباشر بدون .NET Runtime
+./Home.exe
+
+# أو على Windows
+Home.exe
+```
+
+## الطريقة الثانية: النشر باستخدام Web Deploy من Visual Studio
 
 1. ضبط إعدادات النشر:
    - افتح المشروع في Visual Studio
@@ -21,7 +50,7 @@
    - انقر على "Publish" لبدء عملية النشر
    - تحقق من نجاح النشر من خلال الوصول إلى التطبيق عبر المتصفح
 
-## الطريقة الثانية: استخدام GitHub Actions للنشر التلقائي (CI/CD)
+## الطريقة الثالثة: استخدام GitHub Actions للنشر التلقائي (CI/CD)
 
 1. إنشاء ملف GitHub Actions workflow:
    - أنشئ مجلد `.github/workflows` في مشروعك
@@ -51,8 +80,8 @@ jobs:
     - name: Build
       run: dotnet build --configuration Release --no-restore
       
-    - name: Publish
-      run: dotnet publish --configuration Release --no-build --output ./publish
+    - name: Publish (Self-Contained)
+      run: dotnet publish --configuration Release --self-contained true --runtime win-x64 --output ./publish -p:PublishSingleFile=true
       
     - name: Deploy to IIS
       uses: ChristopheLav/iis-deploy@v1
@@ -75,7 +104,7 @@ jobs:
    - عند دفع تغييرات إلى الفرع الرئيسي، سيتم تشغيل workflow تلقائيًا
    - تحقق من نتائج النشر في تبويب "Actions" على GitHub
 
-## الطريقة الثالثة: تشغيل كخدمة Windows (Windows Service)
+## الطريقة الرابعة: تشغيل كخدمة Windows (Windows Service)
 
 1. إنشاء خدمة Windows:
    - قم بتثبيت حزمة `Microsoft.Extensions.Hosting.WindowsServices`:
@@ -96,9 +125,9 @@ jobs:
    builder.Host.UseWindowsService();
    ```
 
-3. نشر التطبيق:
+3. نشر التطبيق (مستقل):
    ```bash
-   dotnet publish --configuration Release --output C:\path\to\publish
+   dotnet publish --configuration Release --self-contained true --runtime win-x64 --output C:\path\to\publish -p:PublishSingleFile=true
    ```
 
 4. تثبيت الخدمة باستخدام SC:
@@ -107,16 +136,16 @@ jobs:
    sc.exe start "HomeRealEstate"
    ```
 
-## الطريقة الرابعة: استخدام Docker
+## الطريقة الخامسة: استخدام Docker
 
-1. إنشاء Dockerfile:
+1. إنشاء Dockerfile (مع النشر المستقل):
    ```dockerfile
-   FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS base
+   FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
    WORKDIR /app
    EXPOSE 80
    EXPOSE 443
 
-   FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+   FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
    WORKDIR /src
    COPY ["Home.csproj", "./"]
    RUN dotnet restore "./Home.csproj"
@@ -125,12 +154,12 @@ jobs:
    RUN dotnet build "Home.csproj" -c Release -o /app/build
 
    FROM build AS publish
-   RUN dotnet publish "Home.csproj" -c Release -o /app/publish
+   RUN dotnet publish "Home.csproj" -c Release -o /app/publish --self-contained true --runtime linux-x64 -p:PublishSingleFile=true
 
-   FROM base AS final
+   FROM mcr.microsoft.com/dotnet/runtime-deps:8.0 AS final
    WORKDIR /app
    COPY --from=publish /app/publish .
-   ENTRYPOINT ["dotnet", "Home.dll"]
+   ENTRYPOINT ["./Home"]
    ```
 
 2. بناء ونشر الصورة:
@@ -150,7 +179,21 @@ jobs:
 
 ## ملاحظات هامة
 
+### حول النشر المستقل (Self-Contained):
+- **المميزات:**
+  - لا يتطلب تثبيت .NET Runtime على السيرفر
+  - توافق أفضل مع البيئات المختلفة
+  - أداء محسّن للتطبيقات الكبيرة
+  - استقلالية كاملة عن إصدارات .NET المثبتة على النظام
+
+- **الاعتبارات:**
+  - حجم أكبر للملفات (حوالي 130-140 MB)
+  - وقت build أطول قليلاً
+  - يجب تحديد معمارية النظام المستهدف
+
+### نصائح عامة:
 - تأكد من نسخ ملفات appsettings.json المناسبة للبيئة المستهدفة.
 - تأكد من إعداد قاعدة البيانات بشكل صحيح وإجراء الهجرات اللازمة.
 - تأكد من صلاحيات الوصول للمجلدات المطلوبة، خاصة مجلدات تحميل الصور.
 - احرص على أمان كلمات المرور وسلاسل الاتصال باستخدام متغيرات البيئة أو أسرار Azure KeyVault.
+- للبيئات الإنتاجية، فعّل HTTPS وقم بتكوين شهادات SSL المناسبة.

@@ -31,6 +31,10 @@ bld/
 [Oo]bj/
 [Ll]og/
 [Ll]ogs/
+
+# Self-contained publish outputs
+publish*/
+test-publish/
 publish/
 
 # Visual Studio 2015/2017 cache/options directory
