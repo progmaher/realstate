@@ -102,10 +102,8 @@ app.UseAuthentication(); // Don't forget this
 app.UseAuthorization();
 app.UseFastEndpoints().UseSwaggerGen();
 app.UseCors("AllowAll");
-app.MapStaticAssets();
-app.MapRazorPages()
-   .WithStaticAssets();
 app.UseStaticFiles();
+app.MapRazorPages();
 
 // Create tables if they don't exist
 using (var scope = app.Services.CreateScope())
