@@ -54,6 +54,10 @@ jobs:
     - name: Publish
       run: dotnet publish --configuration Release --no-build --output ./publish
       
+    # Alternative: Self-contained x64 deployment
+    # - name: Publish Self-Contained x64
+    #   run: dotnet publish --configuration Release --runtime win-x64 --self-contained true --output ./publish
+      
     - name: Deploy to IIS
       uses: ChristopheLav/iis-deploy@v1
       with:
@@ -100,6 +104,11 @@ jobs:
    ```bash
    dotnet publish --configuration Release --output C:\path\to\publish
    ```
+   
+   أو للنشر المستقل (self-contained) مع x64:
+   ```bash
+   dotnet publish --configuration Release --runtime win-x64 --self-contained true --output C:\path\to\publish
+   ```
 
 4. تثبيت الخدمة باستخدام SC:
    ```powershell
@@ -127,6 +136,9 @@ jobs:
    FROM build AS publish
    RUN dotnet publish "Home.csproj" -c Release -o /app/publish
 
+   # Alternative: Self-contained deployment for specific runtime
+   # RUN dotnet publish "Home.csproj" -c Release --runtime linux-x64 --self-contained true -o /app/publish
+
    FROM base AS final
    WORKDIR /app
    COPY --from=publish /app/publish .
@@ -148,7 +160,66 @@ jobs:
    docker run -d -p 80:80 -p 443:443 --name home-realstate yourusername/home-realstate:latest
    ```
 
-## ملاحظات هامة
+## الطريقة الخامسة: النشر المستقل بهدف x64 (Self-Contained x64 Deployment)
+
+هذه الطريقة تنشئ تطبيقًا مستقلاً يحتوي على جميع dependencies اللازمة للتشغيل دون الحاجة لتثبيت .NET Runtime على السيرفر المستهدف.
+
+### المميزات:
+- لا يتطلب تثبيت .NET Runtime على السيرفر
+- ملف تنفيذي واحد (.exe) يحتوي على كل شيء
+- أداء محسن مع ReadyToRun compilation
+- سهولة النشر والتوزيع
+
+### خطوات النشر:
+
+1. **استخدام الـ Batch Script (Windows):**
+   ```cmd
+   publish-selfcontained.bat
+   ```
+
+2. **استخدام الـ Shell Script (Linux/Mac):**
+   ```bash
+   ./publish-selfcontained.sh
+   ```
+
+3. **استخدام dotnet CLI مباشرة:**
+   ```bash
+   dotnet publish --configuration Release --runtime win-x64 --self-contained true --output ./publish/win-x64
+   ```
+
+### خصائص التكوين في المشروع:
+
+```xml
+<PropertyGroup>
+  <SelfContained>true</SelfContained>
+  <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+  <PublishSingleFile>true</PublishSingleFile>
+  <PublishReadyToRun>true</PublishReadyToRun>
+  <PublishTrimmed>false</PublishTrimmed>
+</PropertyGroup>
+```
+
+### النتيجة النهائية:
+- **المجلد**: `./publish/win-x64/`
+- **الملف التنفيذي**: `Home.exe` (~251MB)
+- **الملفات المطلوبة**: 
+  - `Home.exe` (التطبيق الرئيسي)
+  - `appsettings.json` (إعدادات التطبيق)
+  - `appsettings.Development.json` (إعدادات التطوير)
+  - `web.config` (إعدادات IIS)
+  - مجلد `wwwroot` (الملفات الثابتة)
+
+### النشر على السيرفر:
+1. انسخ محتويات مجلد `./publish/win-x64/` إلى السيرفر المستهدف
+2. تأكد من تكوين إعدادات قاعدة البيانات في `appsettings.json`
+3. شغل التطبيق مباشرة: `Home.exe`
+4. أو قم بتكوينه كخدمة Windows أو في IIS
+
+### ملاحظات هامة:
+- حجم الملف التنفيذي كبير نسبيًا (~251MB) لأنه يحتوي على .NET Runtime
+- يمكن تقليل الحجم باستخدام `PublishTrimmed=true` لكن يجب اختباره جيدًا
+- يعمل فقط على النظام المحدد (win-x64 في هذه الحالة)
+
 
 - تأكد من نسخ ملفات appsettings.json المناسبة للبيئة المستهدفة.
 - تأكد من إعداد قاعدة البيانات بشكل صحيح وإجراء الهجرات اللازمة.
