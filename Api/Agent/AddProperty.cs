@@ -57,7 +57,7 @@ namespace Home.Api.Agent
                 }
 
                 // Create new property
-                var property = new Property
+                var property = new Data.Property
                 {
                     Title = req.Title,
                     TitleAr = req.TitleAr,
